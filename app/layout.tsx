@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { LangProvider } from "@/components/layout/LangContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,10 +18,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className="dark">
-      <body className={`${inter.className} bg-[#0F1117] text-white antialiased`}>
-        <Navbar />
-        {children}
+    <html lang="fr" suppressHydrationWarning>
+      <body
+        className={`
+          ${inter.className}
+          bg-[#0F1117] dark:bg-[#0F1117] bg-slate-50
+          text-gray-900 dark:text-white
+          antialiased transition-colors duration-300
+        `}
+      >
+        <ThemeProvider>
+          <LangProvider>
+            <Navbar />
+            {children}
+          </LangProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
