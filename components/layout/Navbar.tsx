@@ -6,15 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sun, Moon, Globe } from "lucide-react";
 import Link from "next/link";
 import { useLang } from "@/components/layout/LangContext";
+import AuthButton from "./AuthButton";
 
 const navLinks = {
   fr: [
-    { label: "Fonctionnalités", href: "#features" },
+    { label: "Fonctionnalités", href: "/#features" },
     { label: "À Propos",        href: "/about"     },
     { label: "Documentation",   href: "/docs"      },
   ],
   en: [
-    { label: "Features",      href: "#features" },
+    { label: "Features",      href: "/#features" },
     { label: "About",         href: "/about"    },
     { label: "Documentation", href: "/docs"     },
   ],
@@ -61,8 +62,11 @@ export default function Navbar() {
           <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white text-sm font-black">
             G
           </div>
-          <span className="dark:text-white text-gray-900">Geo</span>
-          <span className="text-indigo-400">SmartX</span>
+          <div>
+            <span className="dark:text-white text-gray-900">Geo</span>
+            <span className="text-indigo-400">SmartX</span>
+          </div>
+
         </Link>
 
         {/* Desktop links */}
@@ -98,12 +102,7 @@ export default function Navbar() {
             </button>
           )}
 
-          <Link
-            href="/simulator"
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/25"
-          >
-            {lang === "fr" ? "Tester la Bêta" : "Try Beta"}
-          </Link>
+          <AuthButton lang={lang} />
         </div>
 
         {/* Mobile button */}

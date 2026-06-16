@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { LangProvider } from "@/components/layout/LangContext";
+import { SessionProvider } from "@/components/layout/SessionProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,12 +28,14 @@ export default function RootLayout({
           antialiased transition-colors duration-300
         `}
       >
-        <ThemeProvider>
-          <LangProvider>
-            <Navbar />
-            {children}
-          </LangProvider>
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider>
+            <LangProvider>
+              <Navbar />
+              {children}
+            </LangProvider>
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );
