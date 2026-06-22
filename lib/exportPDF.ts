@@ -328,10 +328,9 @@ export async function exportPDF(data: ExportData): Promise<void> {
 
   doc.setDrawColor(...rgb("#6366F1"));
   doc.setLineWidth(0.6);
-  doc.setLineDashPattern([1.2, 0.8], 0);
+  (doc as any).setLineDashPattern([1.2, 0.8], 0);
   doc.line(envX1, envY1, envX2, envY2);
-  doc.setLineDashPattern([], 0);
-
+  (doc as any).setLineDashPattern([], 0);
   // c intercept dot
   doc.setFillColor(...rgb("#6366F1"));
   doc.circle(px, envY1, 0.8, "F");
