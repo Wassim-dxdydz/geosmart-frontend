@@ -1,8 +1,9 @@
 "use client";
 
-import { useSession, signIn, signOut } from "next-auth/react";
-import { LogIn, LogOut, User } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { LogIn, LogOut } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function AuthButton({ lang = "fr" }: { lang?: "fr" | "en" }) {
@@ -10,9 +11,7 @@ export default function AuthButton({ lang = "fr" }: { lang?: "fr" | "en" }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (status === "loading") {
-    return (
-      <div className="w-8 h-8 rounded-full dark:bg-white/10 bg-gray-200 animate-pulse" />
-    );
+    return <div className="w-8 h-8 rounded-full dark:bg-white/10 bg-gray-200 animate-pulse" />;
   }
 
   if (session?.user) {
@@ -39,12 +38,7 @@ export default function AuthButton({ lang = "fr" }: { lang?: "fr" | "en" }) {
 
         {menuOpen && (
           <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setMenuOpen(false)}
-            />
-            {/* Dropdown */}
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
             <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border dark:border-white/10 border-gray-200 dark:bg-[#0F1117] bg-white shadow-xl overflow-hidden">
               <div className="px-4 py-3 border-b dark:border-white/10 border-gray-100">
                 <p className="text-sm font-semibold dark:text-white text-gray-900 truncate">
@@ -54,12 +48,16 @@ export default function AuthButton({ lang = "fr" }: { lang?: "fr" | "en" }) {
                   {session.user.email}
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  signOut({ callbackUrl: "/" });
-                }}
+              <Link
+                href="/simulator"
+                onClick={() => setMenuOpen(false)}
                 className="w-full flex items-center gap-2 px-4 py-3 text-sm dark:text-gray-300 text-gray-600 dark:hover:bg-white/5 hover:bg-gray-50 transition-colors"
+              >
+                {lang === "fr" ? "Aller au simulateur" : "Go to simulator"}
+              </Link>
+              <button
+                onClick={() => { setMenuOpen(false); signOut({ callbackUrl: "/" }); }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-rose-400 dark:hover:bg-white/5 hover:bg-gray-50 transition-colors border-t dark:border-white/10 border-gray-100"
               >
                 <LogOut size={15} />
                 {lang === "fr" ? "Se déconnecter" : "Sign out"}
@@ -71,13 +69,14 @@ export default function AuthButton({ lang = "fr" }: { lang?: "fr" | "en" }) {
     );
   }
 
+  // Not logged in — go to /login page
   return (
-    <button
-      onClick={() => signIn("google", { callbackUrl: "/simulator" })}
-      className="flex items-center gap-2 px-4 py-2 rounded-lg border dark:border-white/10 border-gray-200 dark:text-gray-300 text-gray-600 dark:hover:bg-white/5 hover:bg-gray-50 text-sm font-medium transition-all duration-200"
+    <Link
+      href="/login"
+      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/25"
     >
       <LogIn size={15} />
       {lang === "fr" ? "Connexion" : "Sign in"}
-    </button>
+    </Link>
   );
 }

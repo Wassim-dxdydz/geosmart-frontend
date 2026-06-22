@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, MapPin, Users, Target, Lightbulb } from "lucide-react";
 import { useLang } from "@/components/layout/LangContext";
+import Footer from "@/components/sections/Footer";
 
 const fadeUp = (delay = 0): HTMLMotionProps<"div"> => ({
   initial: { opacity: 0, y: 30 },
@@ -301,6 +302,7 @@ export default function AboutPage() {
           </Link>
         </motion.div>
       </section>
+      <Footer />
     </main>
   );
 }

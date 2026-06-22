@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
+import NavbarWrapper from "@/components/layout/NavbarWrapper";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { LangProvider } from "@/components/layout/LangContext";
 import { SessionProvider } from "@/components/layout/SessionProvider";
@@ -31,7 +31,7 @@ export default function RootLayout({
         <SessionProvider>
           <ThemeProvider>
             <LangProvider>
-              <Navbar />
+              <NavbarWrapper/>
               {children}
             </LangProvider>
           </ThemeProvider>

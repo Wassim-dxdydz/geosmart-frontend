@@ -5,6 +5,7 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, BookOpen, FlaskConical, BarChart3, FileText, ChevronRight, Search, ExternalLink } from "lucide-react";
 import { useLang } from "@/components/layout/LangContext";
+import Footer from "@/components/sections/Footer";
 
 const fadeUp = (delay = 0): HTMLMotionProps<"div"> => ({
   initial: { opacity: 0, y: 20 },
@@ -416,6 +417,7 @@ export default function DocsPage() {
           </div>
         </div>
       </section>
+      <Footer />
     </main>
   );
 }
