@@ -6,6 +6,7 @@ import { ArrowRight, ArrowLeft, FlaskConical, CheckCircle2, RotateCcw, Download 
 import { useLang } from "@/components/layout/LangContext";
 import Link from "next/link";
 import { predict } from "@/lib/usePredict";
+import { exportPDF } from "@/lib/exportPDF";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SimInputs {
@@ -14,7 +15,7 @@ interface SimInputs {
   FC: string;
   WL: string;
   IP: string;
-  MC: string;
+  MC: string; 
   SR: string;
   ROD: string;
 }
@@ -534,6 +535,19 @@ const handleCalculate = async () => {
                   <RotateCcw size={14} /> {tr.restart}
                 </button>
                 <button
+                  onClick={() => exportPDF({
+                    cohesion:   results!.cohesion,
+                    phi:        results!.phi,
+                    confidence: results!.confidence,
+                    soilLabel:  results!.soilLabel,
+                    soilType:   inputs.soilType,
+                    testType:   inputs.testType,
+                    inputs: {
+                      FC: inputs.FC, WL: inputs.WL, IP: inputs.IP,
+                      MC: inputs.MC, SR: inputs.SR, ROD: inputs.ROD,
+                    },
+                    lang,
+                  })}
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all"
                 >
                   <Download size={14} /> {tr.export}
