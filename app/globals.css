@@ -128,3 +128,18 @@
     @apply font-sans;
   }
 }
+
+.range-input {
+  appearance: none;
+  -webkit-appearance: none;
+  opacity: 0;
+  cursor: grab;
+  height: 2rem;
+  width: 100%;
+  position: absolute;
+  z-index: 20;
+}
+
+.range-input:active {
+  cursor: grabbing;
+}

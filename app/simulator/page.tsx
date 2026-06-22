@@ -7,9 +7,10 @@ import { useLang } from "@/components/layout/LangContext";
 import Link from "next/link";
 import { predict } from "@/lib/usePredict";
 import { exportPDF } from "@/lib/exportPDF";
+import { ParamStep } from "@/components/ui/ParamInput";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-interface SimInputs {
+interface SimInputs extends Record<string, string> {
   soilType: string;
   testType: string;
   FC: string;
@@ -69,7 +70,7 @@ const t = {
       { key: "IP",  label: "Indice de plasticité (IP)",   unit: "%",   min: 0,   max: 80,  step: 1,   placeholder: "ex: 18" },
       { key: "MC",  label: "Teneur en eau (MC)",          unit: "%",   min: 0,   max: 100, step: 0.5, placeholder: "ex: 24" },
       { key: "SR",  label: "Degré de saturation (SR)",    unit: "%",   min: 0,   max: 100, step: 1,   placeholder: "ex: 85" },
-      { key: "ROD", label: "Degré d'altération (ROD)",    unit: "-",   min: 0,   max: 5,   step: 1,   placeholder: "0 à 5" },
+      { key: "ROD", label: "Degré d'altération (ROD)",    unit: "-",   min: 0,   max: 5,   step: 0.1, placeholder: "ex: 1.6" },
     ],
     next: "Suivant",
     back: "Retour",
@@ -109,7 +110,7 @@ const t = {
       { key: "IP",  label: "Plasticity index (IP)",    unit: "%",   min: 0,   max: 80,  step: 1,   placeholder: "e.g. 18" },
       { key: "MC",  label: "Water content (MC)",       unit: "%",   min: 0,   max: 100, step: 0.5, placeholder: "e.g. 24" },
       { key: "SR",  label: "Saturation degree (SR)",   unit: "%",   min: 0,   max: 100, step: 1,   placeholder: "e.g. 85" },
-      { key: "ROD", label: "Alteration degree (ROD)",  unit: "-",   min: 0,   max: 5,   step: 1,   placeholder: "0 to 5" },
+      { key: "ROD", label: "Alteration degree (ROD)",  unit: "-",   min: 0,   max: 5,   step: 0.1, placeholder: "e.g. 1.6" },
     ],
     next: "Next",
     back: "Back",
@@ -130,12 +131,22 @@ const t = {
 
 // ─── Result Mohr diagram ──────────────────────────────────────────────────────
 function ResultMohr({ c, phi }: { c: number; phi: number }) {
-  const oy = 170;
-  const phiRad = (phi * Math.PI) / 180;
-  const sc = 0.55;
-  const ox = 50;
+  const W   = 560;
+  const H   = 280;
+  const ox  = 55;   // sigma=0 → SVG x
+  const oy  = H - 28; // tau=0  → SVG y
 
+  const phiRad = (phi * Math.PI) / 180;
+
+  // Auto-scale: fit largest circle in both dimensions
   const sigma3s = [20, 70, 150];
+  const s1Max = (150 * (1 + Math.sin(phiRad)) + 2 * c * Math.cos(phiRad)) / (1 - Math.sin(phiRad));
+  const rMax  = (s1Max - 150) / 2;
+  const scH   = (W - ox - 20) / s1Max;
+  const scV   = (oy - 30) / rMax;
+  const sc    = Math.min(scH, scV) * 0.92; // 8% margin
+
+  // Circles
   const circles = sigma3s.map((s3, i) => {
     const s1 = (s3 * (1 + Math.sin(phiRad)) + 2 * c * Math.cos(phiRad)) / (1 - Math.sin(phiRad));
     const cx = ox + ((s1 + s3) / 2) * sc;
@@ -143,68 +154,93 @@ function ResultMohr({ c, phi }: { c: number; phi: number }) {
     return { cx, r, stroke: i === 2 ? "#F59E0B" : "#6366F1", opacity: [0.45, 0.72, 1][i], sw: [1.4, 1.7, 2.1][i] };
   });
 
+  // Envelope — clipped at top (y=18)
   const y1e = oy - c * sc;
-  const x2e = ox + 300 * sc;
-  const y2e = oy - (c + 300 * Math.tan(phiRad)) * sc;
+  const sigmaAtTop = (oy - 18 - c * sc) / (Math.tan(phiRad) * sc);
+  const x2e = ox + sigmaAtTop * sc;
+  const y2e = 18;
+
+  // Sigma ticks
+  const sigmaStep = s1Max > 500 ? 100 : s1Max > 200 ? 50 : 25;
+  const sigmaTicks: number[] = [];
+  for (let s = sigmaStep; s < s1Max * 0.95; s += sigmaStep) sigmaTicks.push(Math.round(s));
 
   return (
-    <svg viewBox="0 0 460 200" className="w-full h-48" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-64" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <clipPath id="res-clip">
-          <rect x="0" y="0" width="460" height={oy} />
+          <rect x={ox} y="15" width={W - ox - 5} height={oy - 15} />
         </clipPath>
       </defs>
+
       {/* Grid */}
-      {[80,160,240,320,400].map(x => (
-        <line key={x} x1={x} y1="10" x2={x} y2={oy} stroke="#6366F1" strokeWidth="0.3" opacity="0.12" />
+      {sigmaTicks.map(s => (
+        <line key={s} x1={ox + s*sc} y1="15" x2={ox + s*sc} y2={oy}
+          stroke="#6366F1" strokeWidth="0.3" opacity="0.1" />
       ))}
-      {[40,80,120,160].map(y => (
-        <line key={y} x1={ox} y1={oy-y} x2="445" y2={oy-y} stroke="#6366F1" strokeWidth="0.3" opacity="0.12" />
+      {[0.25, 0.5, 0.75, 1].map(f => (
+        <line key={f} x1={ox} y1={oy - rMax*sc*f} x2={W - 10} y2={oy - rMax*sc*f}
+          stroke="#6366F1" strokeWidth="0.3" opacity="0.1" />
       ))}
-      {/* Axes */}
-      <line x1={ox-6} y1={oy} x2="448" y2={oy} stroke="#334155" strokeWidth="1" />
-      <line x1={ox} y1={oy+5} x2={ox} y2="8" stroke="#334155" strokeWidth="1" />
-      <polygon points={`444,${oy-3} 451,${oy} 444,${oy+3}`} fill="#334155" />
-      <polygon points={`${ox-3},11 ${ox},4 ${ox+3},11`} fill="#334155" />
-      <text x="454" y={oy+4} fill="#64748b" fontSize="10" fontStyle="italic">σ</text>
-      <text x={ox-14} y="10" fill="#64748b" fontSize="10" fontStyle="italic">τ</text>
-      {/* Ticks */}
-      {[50,100,150,200,250].map(s => {
+
+      {/* Sigma axis */}
+      <line x1={ox - 6} y1={oy} x2={W - 8} y2={oy} stroke="#334155" strokeWidth="1" />
+      <polygon points={`${W-8},${oy-3} ${W-2},${oy} ${W-8},${oy+3}`} fill="#334155" />
+      <text x={W - 4} y={oy + 4} fill="#64748b" fontSize="11" fontStyle="italic">σ</text>
+
+      {/* Tau axis */}
+      <line x1={ox} y1={oy + 5} x2={ox} y2="10" stroke="#334155" strokeWidth="1" />
+      <polygon points={`${ox-3},13 ${ox},7 ${ox+3},13`} fill="#334155" />
+      <text x={ox - 14} y="12" fill="#64748b" fontSize="11" fontStyle="italic">τ</text>
+
+      {/* Sigma ticks */}
+      {sigmaTicks.map(s => {
         const x = ox + s * sc;
-        return x < 445 ? (
-          <g key={s}>
-            <line x1={x} y1={oy} x2={x} y2={oy+4} stroke="#334155" strokeWidth="0.7" />
-            <text x={x-8} y={oy+13} fill="#475569" fontSize="7">{s}</text>
-          </g>
-        ) : null;
-      })}
-      {[50,100,150].map(tv => {
-        const y = oy - tv * sc;
         return (
-          <g key={tv}>
-            <line x1={ox-4} y1={y} x2={ox} y2={y} stroke="#334155" strokeWidth="0.7" />
-            <text x="10" y={y+3} fill="#475569" fontSize="7">{tv}</text>
+          <g key={s}>
+            <line x1={x} y1={oy} x2={x} y2={oy + 4} stroke="#334155" strokeWidth="0.7" />
+            <text x={x} y={oy + 12} fill="#475569" fontSize="8" textAnchor="middle">{s}</text>
           </g>
         );
       })}
-      {/* Envelope */}
+
+      {/* Tau ticks */}
+      {[0.25, 0.5, 0.75].map(f => {
+        const val = Math.round(rMax * f);
+        const y = oy - val * sc;
+        return (
+          <g key={f}>
+            <line x1={ox - 3} y1={y} x2={ox} y2={y} stroke="#334155" strokeWidth="0.7" />
+            <text x={ox - 5} y={y + 3} fill="#475569" fontSize="8" textAnchor="end">{val}</text>
+          </g>
+        );
+      })}
+
+      {/* Failure envelope — clipped */}
       <line x1={ox} y1={y1e} x2={x2e} y2={y2e}
-        stroke="#6366F1" strokeWidth="1.6" strokeDasharray="5 3" opacity="0.85" />
-      {/* Circles */}
+        stroke="#6366F1" strokeWidth="1.6" strokeDasharray="5 3" opacity="0.85"
+        clipPath="url(#res-clip)" />
+
+      {/* Circles — clipped to upper half */}
       {circles.map((circ, i) => (
-        <motion.circle key={i} cx={circ.cx} cy={oy} r={circ.r}
-          fill="none" stroke={circ.stroke} strokeWidth={circ.sw}
-          opacity={circ.opacity} clipPath="url(#res-clip)"
+        <motion.circle key={i}
+          cx={circ.cx} cy={oy} r={circ.r}
+          fill="none" stroke={circ.stroke}
+          strokeWidth={circ.sw} opacity={circ.opacity}
+          clipPath="url(#res-clip)"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: circ.opacity }}
           style={{ transformOrigin: `${circ.cx}px ${oy}px` }}
           transition={{ duration: 0.8, delay: i * 0.2, ease: "easeOut" as const }}
         />
       ))}
-      {/* Labels */}
+
+      {/* c intercept */}
       <circle cx={ox} cy={y1e} r="3" fill="#6366F1" opacity="0.9" />
-      <text x={ox+5} y={y1e-5} fill="#F59E0B" fontSize="8">c = {c} kPa</text>
-      <text x={x2e+4} y={y2e+4} fill="#F59E0B" fontSize="10" fontWeight="bold">φ = {phi}°</text>
+      <text x={ox + 5} y={y1e - 5} fill="#F59E0B" fontSize="9">c = {c} kPa</text>
+
+      {/* φ label */}
+      <text x={x2e + 4} y={y2e + 12} fill="#F59E0B" fontSize="11" fontWeight="bold">φ = {phi}°</text>
     </svg>
   );
 }
@@ -309,7 +345,7 @@ const handleCalculate = async () => {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
       <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-indigo-600/8 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative max-w-3xl mx-auto px-6 py-20">
+      <div className="relative max-w-5xl mx-auto px-6 py-20">
 
         {/* Header */}
         <div className="text-center mb-6">
@@ -402,38 +438,12 @@ const handleCalculate = async () => {
 
               {/* ── STEP 2: Parameters ── */}
               {step === 2 && (
-                <div>
-                  <h2 className="text-lg font-bold dark:text-white text-gray-900 mb-1">
-                    {lang === "fr" ? "Paramètres d'essai" : "Test parameters"}
-                  </h2>
-                  <p className="text-sm dark:text-gray-400 text-gray-500 mb-6">
-                    {lang === "fr" ? "Entrez les valeurs mesurées en laboratoire." : "Enter the values measured in the laboratory."}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    {tr.params.map((p) => (
-                      <div key={p.key} className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium dark:text-gray-400 text-gray-600">
-                          {p.label}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min={p.min}
-                            max={p.max}
-                            step={p.step}
-                            value={inputs[p.key as keyof SimInputs]}
-                            onChange={(e) => set(p.key as keyof SimInputs, e.target.value)}
-                            placeholder={p.placeholder}
-                            className="w-full pr-10 pl-3 py-2.5 rounded-xl border dark:border-white/10 border-gray-200 dark:bg-white/5 bg-gray-50 dark:text-white text-gray-900 dark:placeholder-gray-600 placeholder-gray-400 text-sm focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 transition-all"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs dark:text-gray-500 text-gray-400 font-mono">
-                            {p.unit}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <ParamStep
+                  params={tr.params}
+                  inputs={inputs}
+                  onChange={(key: string, val: string) => set(key as keyof SimInputs, val)}
+                  lang={lang}
+                />
               )}
 
               {/* ── STEP 3: Results ── */}
@@ -452,33 +462,42 @@ const handleCalculate = async () => {
                     </span>
                   </div>
 
-                  {/* Result stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    {[
-                      { label: tr.cohesionLabel,   value: `${results.cohesion} kPa`, color: "text-emerald-400" },
-                      { label: tr.phiLabel,         value: `${results.phi}°`,         color: "text-amber-400"   },
-                      { label: tr.confidenceLabel,  value: `${results.confidence}%`,  color: "text-indigo-400"  },
-                      { label: tr.soilLabel,        value: results.soilLabel,          color: "dark:text-white text-gray-900" },
-                    ].map((r, i) => (
-                      <motion.div
-                        key={r.label}
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1, duration: 0.4 }}
-                        className="rounded-xl border dark:border-white/10 border-gray-200 dark:bg-white/5 bg-gray-50 px-4 py-3"
-                      >
-                        <p className="text-xs dark:text-gray-500 text-gray-400 mb-1">{r.label}</p>
-                        <p className={`text-lg font-black ${r.color}`}>{r.value}</p>
-                      </motion.div>
-                    ))}
-                  </div>
+                  {/* ── Two column layout: stats left, diagram right ── */}
+                  <div className="flex gap-4">
 
-                  {/* Mohr diagram */}
-                  <div className="rounded-xl border dark:border-white/10 border-gray-100 dark:bg-white/5 bg-gray-50 p-4 mb-4">
-                    <p className="text-xs dark:text-gray-500 text-gray-400 mb-2 uppercase tracking-wider">
-                      {tr.analysisLabel} · Mohr-Coulomb
-                    </p>
-                    <ResultMohr c={results.cohesion} phi={results.phi} />
+                    {/* Left: 4 stat cards stacked vertically — 15% */}
+                    <div className="flex flex-col gap-3 w-[20%] flex-shrink-0">
+                      {[
+                        { label: tr.cohesionLabel,  value: `${results.cohesion} kPa`, color: "text-emerald-400" },
+                        { label: tr.phiLabel,        value: `${results.phi}°`,         color: "text-amber-400"   },
+                        { label: tr.confidenceLabel, value: `${results.confidence}%`,  color: "text-indigo-400"  },
+                        { label: tr.soilLabel,       value: results.soilLabel,          color: "dark:text-white text-gray-900" },
+                      ].map((r, i) => (
+                        <motion.div
+                          key={r.label}
+                          initial={{ opacity: 0, x: -16 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1, duration: 0.4 }}
+                          className="rounded-xl border dark:border-white/10 border-gray-200 dark:bg-white/5 bg-gray-50 px-3 py-3 flex-1"
+                        >
+                          <p className="text-xs dark:text-gray-500 text-gray-400 mb-1 leading-tight">{r.label}</p>
+                          <p className={`text-base font-black ${r.color}`}>{r.value}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Right: Mohr diagram — 70% */}
+                    <motion.div
+                      initial={{ opacity: 0, x: 16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                      className="flex-1 rounded-xl border dark:border-white/10 border-gray-100 dark:bg-white/5 bg-gray-50 p-4 pt-6"
+                    >
+                      <p className="text-xs dark:text-gray-500 text-gray-400 mb-3 uppercase tracking-wider">
+                        {tr.analysisLabel} · Mohr-Coulomb
+                      </p>
+                      <ResultMohr c={results.cohesion} phi={results.phi} />
+                    </motion.div>
                   </div>
                 </div>
               )}
