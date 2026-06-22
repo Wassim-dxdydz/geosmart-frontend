@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     ],
   },
   turbopack: {
-    root: "C:\\Users\\abahr\\Downloads\\ML-WebApp\\frontend",
+    root: process.env.VERCEL ? "/vercel/path0" : "C:\\Users\\abahr\\Downloads\\ML-WebApp\\frontend",
   },
   experimental: {
     optimizePackageImports: ["framer-motion", "lucide-react", "next-themes"],
