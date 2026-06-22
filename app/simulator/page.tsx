@@ -5,6 +5,7 @@ import { motion, AnimatePresence, type HTMLMotionProps } from "framer-motion";
 import { ArrowRight, ArrowLeft, FlaskConical, CheckCircle2, RotateCcw, Download } from "lucide-react";
 import { useLang } from "@/components/layout/LangContext";
 import Link from "next/link";
+import { predict } from "@/lib/usePredict";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SimInputs {
@@ -248,6 +249,7 @@ export default function SimulatorPage() {
   });
   const [results, setResults] = useState<SimResults | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (key: keyof SimInputs, val: string) =>
     setInputs(prev => ({ ...prev, [key]: val }));
@@ -259,13 +261,28 @@ export default function SimulatorPage() {
     return false;
   };
 
-  const handleCalculate = () => {
+const handleCalculate = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setResults(mockPredict(inputs));
-      setLoading(false);
+    setError(null);
+    try {
+      const data = await predict({
+        soil_type: inputs.soilType,
+        test_type: inputs.testType.toLowerCase(),
+        FC: inputs.FC, WL: inputs.WL, IP: inputs.IP,
+        MC: inputs.MC, SR: inputs.SR, ROD: inputs.ROD,
+      });
+      setResults({
+        cohesion:   data.cohesion,
+        phi:        data.phi,
+        confidence: data.confidence,
+        soilLabel:  data.soil_label,
+      });
       setStep(3);
-    }, 1800);
+    } catch (err: any) {
+      setError(err.message ?? "Erreur de prédiction");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRestart = () => {
@@ -461,6 +478,12 @@ export default function SimulatorPage() {
 
             </motion.div>
           </AnimatePresence>
+
+          {error && (
+            <div className="mx-8 mb-4 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Footer buttons */}
           <div className="px-8 pb-8 flex items-center justify-between">
