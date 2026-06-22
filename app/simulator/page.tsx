@@ -265,8 +265,14 @@ const handleCalculate = async () => {
     setLoading(true);
     setError(null);
     try {
+      const soilMap: Record<string, string> = {
+        clay: "argile",
+        silt: "limons",
+        marl: "marne",
+        sand: "sable",
+      };
       const data = await predict({
-        soil_type: inputs.soilType,
+        soil_type: soilMap[inputs.soilType] ?? inputs.soilType,
         test_type: inputs.testType.toLowerCase(),
         FC: inputs.FC, WL: inputs.WL, IP: inputs.IP,
         MC: inputs.MC, SR: inputs.SR, ROD: inputs.ROD,
